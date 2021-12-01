@@ -1,10 +1,10 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "version": "1.0.1",
-    "title": "Swagger Petstore",
-    "description": "A sample API that uses a petstore as an example to demonstrate features in the OpenAPI 3.0 specification",
-    "termsOfService": "http://swagger.io/terms/",
+    "version": "1.0.2",
+    "title": "My Petstore",
+    "description": "A sample API that uses my petstore as an example to demonstrate features in the OpenAPI 3.0 specification",
+    "termsOfService": "http://miguel.io/terms/",
     "contact": {
       "name": "Swagger API Team",
       "email": "apiteam@swagger.io",
