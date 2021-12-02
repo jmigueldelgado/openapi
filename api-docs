@@ -1,0 +1,1460 @@
+openapi: 3.0.1
+info:
+  title: UP42 Order API
+  description: Ordering and user storage
+  termsOfService: https://up42.com/legal/terms-of-use/
+  contact:
+    name: UP42 support
+    email: support@up42.com
+servers:
+  - url: https://api.up42.com
+    description: Production
+  - url: https://api.up42.dev
+    description: Staging
+  - url: http://localhost:8080
+    description: Development
+security:
+  - Bearer: []
+paths:
+  /workspaces/{workspaceId}/orders:
+    get:
+      tags:
+        - order-controller
+      summary: List orders in a given workspace
+      operationId: listOrdersUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            default: FLAT
+            enum:
+              - FLAT
+              - PAGINATED
+        - name: page
+          in: query
+          description: Zero-based page index (0..N)
+          required: false
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: The size of the page to be returned
+          required: false
+          schema:
+            minimum: 1
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: >-
+            Sorting criteria in the format: property(,asc|desc). Default sort
+            order is ascending. Multiple sort criteria are supported.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - createdAt,DESC
+        - name: type
+          in: query
+          description: Non-Required - Filtering orders by type
+          required: false
+          schema:
+            type: string
+            enum:
+              - TASKING
+              - ARCHIVE
+          examples:
+            Archive Orders:
+              description: For fetching only archive orders
+              value: ARCHIVE
+            Tasking Orders:
+              description: For fetching only tasking orders
+              value: TASKING
+            All Orders:
+              description: Omit field for fetching all order types
+      responses:
+        2xx:
+          description: default response
+          content:
+            application/json:
+              schema:
+                description: >-
+                  By default a simple (flat) response is returned, if the
+                  parameter `format=paginated` is set a paginated response is
+                  returned. The former is deprecated and it will be removed in
+                  the future, so the only available format will be the paginated
+                  one.
+                deprecated: true
+                oneOf:
+                  - $ref: '#/components/schemas/GetOrders'
+                  - $ref: '#/components/schemas/GetPaginatedOrders'
+        non 2xx:
+          description: default response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+    post:
+      tags:
+        - order-controller
+      summary: Create order
+      operationId: createOrderUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CreateDeprecatedOrderRequest'
+                - $ref: '#/components/schemas/CreateOrderRequest'
+        required: true
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/orders/estimate:
+    post:
+      tags:
+        - order-controller
+      summary: Estimate in advance the credit costs for an order
+      description: Before placing an order, users can view the estimated price. This helps users get an overview of the overall credit amount that will be deducted from their credit balance, if they proceed with the ordering. Please note that automatic price estimation is not supported for tasking orders yet.
+      operationId: estimateOrder
+      parameters:
+        - in: path
+          name: workspace_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Unique ID for the collection of projects and workflows associated to each user
+          example: 4d86ec1b-be2c-5627-aa80-7e065fc94171
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CreateDeprecatedOrderRequest'
+                - $ref: '#/components/schemas/CreateOrderRequest'
+        required: true
+      responses:
+        '200':
+          description: Estimate the credit costs for an order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEstimateOrder'
+        '400':
+          description: 400 could also be returned while attempting to estimate a tasking order because automatic price estimation is not supported for tasking orders yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Access token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /manage/workspaces/{workspaceId}/orders:
+    get:
+      tags:
+        - admin
+      summary: List orders for admin view
+      operationId: listOrdersUnderWorkspace_1
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Zero-based page index (0..N)
+          required: false
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: The size of the page to be returned
+          required: false
+          schema:
+            minimum: 1
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: >-
+            Sorting criteria in the format: property(,asc|desc). Default sort
+            order is ascending. Multiple sort criteria are supported.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - createdAt,DESC
+        - name: type
+          in: query
+          description: Non-Required - Filtering orders by type
+          required: false
+          schema:
+            type: string
+            enum:
+              - TASKING
+              - ARCHIVE
+          examples:
+            Archive Orders:
+              description: For fetching only archive orders
+              value: ARCHIVE
+            Tasking Orders:
+              description: For fetching only tasking orders
+              value: TASKING
+            All Orders:
+              description: Omit field for fetching all order types
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminListOrders'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+    post:
+      tags:
+        - admin-order-controller
+      summary: Create order for admin view
+      operationId: createOrderUnderWorkspace_1
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateOrderRequest'
+        required: true
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: uuid
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /manage/workspaces/{workspaceId}/assets:
+    get:
+      tags:
+        - admin
+      summary: List assets for admin view
+      operationId: listAssetsUnderWorkspace_1
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Zero-based page index (0..N)
+          required: false
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: The size of the page to be returned
+          required: false
+          schema:
+            minimum: 1
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: >-
+            Sorting criteria in the format: property(,asc|desc). Default sort
+            order is ascending. Multiple sort criteria are supported.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - createdAt,ASC
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminGetAssets'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+    post:
+      tags:
+        - admin-asset-controller
+      summary: Create a signed URL for tasking asset upload
+      operationId: signTaskingUploadUrl
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUrlAssetTaskingRequest'
+        required: true
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SignTaskingUploadUrl'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /manage/workspaces/{workspaceId}/orders/{orderId}:
+    get:
+      tags:
+        - admin
+      summary: Get order for admin view
+      operationId: getOrderUnderWorkspace_1
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminGetOrder'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+    patch:
+      tags:
+        - admin
+      summary: Patch order for admin view
+      operationId: patchOrder
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/AdminPatchOrderRequest_Internal'
+        required: true
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminGetOrder'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/orders/{orderId}:
+    get:
+      tags:
+        - order-controller
+      summary: Get order
+      operationId: getOrderUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GetOrder'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/orders/{orderId}/metadata:
+    get:
+      tags:
+        - order-controller
+      summary: Get metadata for an order
+      operationId: getOrderMetadataUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GetOrderMetadata'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/assets:
+    get:
+      tags:
+        - asset-controller
+      summary: List assets
+      operationId: listAssetsUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Zero-based page index (0..N)
+          required: false
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: The size of the page to be returned
+          required: false
+          schema:
+            minimum: 1
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: >-
+            Sorting criteria in the format: property(,asc|desc). Default sort
+            order is ascending. Multiple sort criteria are supported.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - createdAt,ASC
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GetAssets'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/assets/{assetId}:
+    get:
+      tags:
+        - asset-controller
+      summary: Get asset
+      operationId: getAssetUnderWorkspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GetAsset'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /workspaces/{workspaceId}/assets/{assetId}/downloadUrl:
+    get:
+      tags:
+        - asset-controller
+      summary: 'Signs a URL that can be used to download an asset '
+      operationId: signDownloadUrl
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SignUrlAssetResponse'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /manage/orders/{orderId}:
+    get:
+      tags:
+        - admin
+      summary: Get order for admin view
+      operationId: getOrder
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminGetOrder'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+  /internal/workspaces/{workspaceId}/assets/{assetId}:
+    get:
+      tags:
+        - internal-asset-controller
+      summary: Get asset information
+      operationId: getAssetUnderWorkspace_1
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GetAsset'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /internal/workspaces/{workspaceId}/assets/{assetId}/download-url:
+    get:
+      tags:
+        - internal-asset-controller
+      summary: Signs a URL that can be used to download an asset for internal usage
+      operationId: signDownloadUrl_1
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SignUrlAssetResponse'
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /manage/assets/{assetId}:
+    delete:
+      tags:
+        - admin
+      summary: Delete asset from admin view
+      operationId: deleteAsset
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Asset was successfully deleted.
+          content:
+            '*/*':
+              schema:
+                type: string
+        non 2xx:
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearer-key: []
+components:
+  schemas:
+    ErrorResponse:
+      required:
+        - error
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorResponseObject'
+    ErrorResponseObject:
+      required:
+        - code
+        - message
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        details:
+          type: object
+    CreateDeprecatedOrderRequest:
+      type: object
+      required:
+        - dataProviderName
+        - orderParams
+      properties:
+        dataProviderName:
+          type: string
+          description: The name of the upstream data provider
+          example: oneatlas
+        orderParams:
+          required:
+            - id
+            - aoi
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The image identifier extracted from the catalog search results
+              example: fc9b216f-f2db-4c64-8a2f-573830c908b0
+            aoi:
+              $ref: 'https://api.swaggerhub.com/apis/OlivierMartineau/GeoJSON/1.0.0#/components/schemas/Polygon'
+    CreateOrderRequest:
+      type: object
+      required:
+        - dataProduct
+        - params
+      properties:
+        dataProduct:
+          type: string
+          format: uuid
+          description: The data product identifier extracted from the data product glossary
+          example: b1f8c48e-d16b-44c4-a1bb-5e8a24892e69
+        params:
+          type: object
+          description:  Order configuration
+    CreateOrderResponse:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateOrderResponseObject'
+    CreateOrderResponseObject:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: An ID of the created order
+    JsonNode:
+      type: object
+    GetEstimateOrder:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/EstimateOrder'
+      example:
+        data:
+          credits: 300
+        error: null
+    EstimateOrder:
+      required:
+        - credits
+      type: integer
+      format: int32
+    Geometry:
+      type: object
+      description: Geometry in GeoJSON format
+    AdminCreateOrderRequest:
+      required:
+        - type
+        - userId
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        dataProvider:
+          type: string
+        dataProduct:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - TASKING
+            - ARCHIVE
+        orderDetails:
+          $ref: '#/components/schemas/TaskingOrderDetailsRequest'
+    TaskingOrderDetailsRequest:
+      required:
+        - acquisitionEnd
+        - acquisitionStart
+        - displayName
+        - geometry
+      type: object
+      properties:
+        displayName:
+          type: string
+        acquisitionStart:
+          type: string
+          format: date-time
+        acquisitionEnd:
+          type: string
+          format: date-time
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+        dataHostOrderId:
+          type: string
+        extraDescription:
+          type: string
+        feasibility:
+          type: string
+          enum:
+            - CHALLENGING
+            - ACHIEVABLE
+        cloudCoverage:
+          type: number
+          format: float
+        incidenceAngle:
+          type: number
+          format: float
+    SignTaskingUploadUrl:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/SignUrlAssetTaskingResponse'
+    SignUrlAssetTaskingResponse:
+      required:
+        - id
+        - url
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: url
+    SignUrlAssetTaskingRequest:
+      required:
+        - fileName
+        - userId
+      type: object
+      properties:
+        fileName:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+    AdminGetOrder:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminOrder'
+    AdminOrder:
+      required:
+        - accountId
+        - createdAt
+        - createdBy
+        - id
+        - status
+        - type
+        - updatedAt
+        - updatedBy
+        - workspaceId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        dataProvider:
+          type: string
+        type:
+          type: string
+          enum:
+            - TASKING
+            - ARCHIVE
+        status:
+          type: string
+          enum:
+            - PLACED
+            - DELIVERY_INITIALIZATION_FAILED
+            - BEING_FULFILLED
+            - DOWNLOAD_FAILED
+            - DOWNLOADED
+            - FULFILLED
+            - FAILED_PERMANENTLY
+        dataProductId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/Auditor'
+        updatedBy:
+          $ref: '#/components/schemas/Auditor'
+        assets:
+          type: array
+          items:
+            type: string
+            format: uuid
+        orderDetails:
+          $ref: '#/components/schemas/OrderDetails'
+    Auditor:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - INTERNAL
+            - ADMIN
+            - API_KEY
+            - USER
+    OrderDetails:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/TaskingOrderDetails'
+    TaskingOrderDetails:
+      required:
+        - acquisitionEnd
+        - acquisitionStart
+        - displayName
+        - geometry
+      type: object
+      properties:
+        displayName:
+          type: string
+        acquisitionStart:
+          type: string
+          format: date-time
+        acquisitionEnd:
+          type: string
+          format: date-time
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+        dataHostOrderId:
+          type: string
+        extraDescription:
+          type: string
+        feasibility:
+          type: string
+          enum:
+            - CHALLENGING
+            - ACHIEVABLE
+        cloudCoverage:
+          type: number
+          format: float
+        incidenceAngle:
+          type: number
+          format: float
+    AdminPatchOrderRequest_Internal:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - PLACED
+            - DELIVERY_INITIALIZATION_FAILED
+            - BEING_FULFILLED
+            - DOWNLOAD_FAILED
+            - DOWNLOADED
+            - FULFILLED
+            - FAILED_PERMANENTLY
+        orderDetails:
+          $ref: '#/components/schemas/TaskingOrderDetailsRequest_Internal'
+    Geometry_Internal:
+      type: object
+      description: Geometry in GeoJSON format
+    TaskingOrderDetailsRequest_Internal:
+      type: object
+      properties:
+        displayName:
+          type: string
+        acquisitionStart:
+          type: string
+          format: date-time
+        acquisitionEnd:
+          type: string
+          format: date-time
+        geometry:
+          $ref: '#/components/schemas/Geometry_Internal'
+        dataHostOrderId:
+          type: string
+        extraDescription:
+          type: string
+        feasibility:
+          type: string
+          enum:
+            - CHALLENGING
+            - ACHIEVABLE
+        cloudCoverage:
+          type: number
+          format: float
+        incidenceAngle:
+          type: number
+          format: float
+    GetOrders:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/GetWorkspaceOrders'
+    GetWorkspaceOrders:
+      required:
+        - orders
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrder'
+    GetPaginatedOrders:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PageAdminOrder'
+    PageAdminOrder:
+      type: object
+      properties:
+        totalPages:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        sort:
+          $ref: '#/components/schemas/Sort'
+        first:
+          type: boolean
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrder'
+        number:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        sort:
+          $ref: '#/components/schemas/Sort'
+        paged:
+          type: boolean
+        pageSize:
+          type: integer
+          format: int32
+        unpaged:
+          type: boolean
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+    Sort:
+      type: object
+      properties:
+        unsorted:
+          type: boolean
+        sorted:
+          type: boolean
+        empty:
+          type: boolean
+    GetOrder:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminOrder'
+    GetOrderMetadata:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/OrderMetadata'
+    OrderMetadata:
+      required:
+        - createdAt
+        - customerReference
+        - id
+        - sqKmArea
+        - updatedAt
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        customerReference:
+          type: string
+        sqKmArea:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Asset:
+      required:
+        - createdAt
+        - createdBy
+        - id
+        - name
+        - source
+        - type
+        - updatedAt
+        - updatedBy
+        - workspaceId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum:
+            - TASKING
+            - ARCHIVED
+            - CUSTOM
+        source:
+          type: string
+          enum:
+            - TASKING
+            - ORDER
+            - BLOCK
+            - UPLOAD
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        metadata:
+          $ref: '#/components/schemas/AssetMetadata'
+        createdBy:
+          $ref: '#/components/schemas/Auditor'
+        updatedBy:
+          $ref: '#/components/schemas/Auditor'
+        updatedAt:
+          type: string
+          format: date-time
+        orderId:
+          type: string
+          format: uuid
+    AssetMetadata:
+      type: object
+      properties:
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+        area:
+          type: number
+          description: Area in square kilometers
+        sceneId:
+          type: string
+        productType:
+          type: string
+        dataHostOrderId:
+          type: string
+          description: Original order ID from the Data Host
+        acquisitionDate:
+          type: string
+          format: date-time
+        resolution:
+          type: number
+        collection:
+          type: string
+        producer:
+          type: string
+    GetAssets:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PageAsset'
+    PageAsset:
+      type: object
+      properties:
+        totalPages:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        sort:
+          $ref: '#/components/schemas/Sort'
+        first:
+          type: boolean
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        number:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+    GetAsset:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Asset'
+    SignUrlAssetResponse:
+      required:
+        - url
+      type: object
+      properties:
+        url:
+          type: string
+          format: url
+    AdminListOrders:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PageAdminOrder'
+    AdminAsset:
+      required:
+        - createdAt
+        - id
+        - isDeleted
+        - name
+        - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum:
+            - TASKING
+            - ARCHIVED
+            - CUSTOM
+        name:
+          type: string
+        isDeleted:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+        orderId:
+          type: string
+          format: uuid
+    AdminGetAssets:
+      required:
+        - data
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PageAdminAsset'
+    PageAdminAsset:
+      type: object
+      properties:
+        totalPages:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        sort:
+          $ref: '#/components/schemas/Sort'
+        first:
+          type: boolean
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAsset'
+        number:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+  securitySchemes:
+    bearer-key:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
